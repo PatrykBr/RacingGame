@@ -1,91 +1,82 @@
 import pygame
 import os
 import sys
-from game import play_game
-
-pygame.init()
+from game import play_game  # Importing the play_game function from another module
 
 # Global Constants
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 RED = (255, 0, 0)
+
+# Fonts and Images
 MENU_FONT = pygame.font.SysFont("comicsans", 50, True)  # Font for menu text
 RETRO_FONT = pygame.font.SysFont("frankgoth", 70, italic=True)  # Font for title
 BACKGROUND_IMAGE = pygame.image.load('imgs/bg.jpg')  # Background image
 F1_CAR_IMAGE = pygame.image.load('imgs/f1.png')  # F1 car image
+ARROW_IMAGE = pygame.image.load("imgs/arrow.png")  # Arrow image
 
+# Menu Class
 class Menu:
-    def __init__(self):
-        # Initialize the game window
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    def __init__(self, screen):
+        self.screen = screen
         pygame.display.set_caption("Racing Game Menu")
-        # Options available in the menu
-        self.menu_options = ["Play", "Settings", "Credits"]
-        self.padding = 10  # Padding between buttons
+        self.menu_options = ["Play", "Settings", "Credits"]  # Options displayed in the menu
+        self.padding = 10  # Padding for button rendering
         self.button_space = 20  # Space between buttons
-        self.button_y_offset = 100  # Offset of buttons from the top of the screen
+        self.button_y_offset = 100  # Vertical offset for buttons
         self.button_color = WHITE  # Default button color
 
+    # Draw the menu
     def draw(self):
-        # Render the menu screen
         self.screen.fill(WHITE)
         self._draw_background()
         self._draw_title()
         self._draw_menu_buttons()
         pygame.display.update()
 
+    # Draw the background image
     def _draw_background(self):
-        # Draw the background image
-        background_image = pygame.transform.scale(BACKGROUND_IMAGE, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        background_image = pygame.transform.scale(BACKGROUND_IMAGE, self.screen.get_size())
         self.screen.blit(background_image, (0, 0))
 
+    # Draw the game title
     def _draw_title(self):
-        # Render and display the "RETRO" text
         retro_text = RETRO_FONT.render("RETRO", True, BLACK)
-
-        # Resize the F1 car image to be 100 pixels tall
         f1_car_height = 100
         f1_car_width = int(F1_CAR_IMAGE.get_width() * (f1_car_height / F1_CAR_IMAGE.get_height()))
         f1_car_image = pygame.transform.scale(F1_CAR_IMAGE, (f1_car_width, f1_car_height))
+        y_position = 20
+        f1_car_x = (self.screen.get_width() - f1_car_width - retro_text.get_width() - 10) // 2
+        retro_text_x = f1_car_x + f1_car_width
+        self.screen.blit(f1_car_image, (f1_car_x, y_position))
+        self.screen.blit(retro_text, (retro_text_x, y_position + 10))
 
-        # Set y-coordinate to position both elements at the top of the screen
-        y_position = 20  
-
-        # Calculate the position to center the image on the x-axis
-        f1_car_x = (SCREEN_WIDTH - f1_car_width - retro_text.get_width() - 10) // 2
-
-        # Calculate the position to place the retro text right next to the F1 car image
-        retro_text_x = f1_car_x + f1_car_width  
-
-        self.screen.blit(f1_car_image, (f1_car_x, y_position))  # Display the F1 car image
-        self.screen.blit(retro_text, (retro_text_x, y_position+10))  # Display the retro text
-
+    # Draw the menu buttons
     def _draw_menu_buttons(self):
-        # Draw the menu buttons on the screen
         max_option_width = max([MENU_FONT.size(option)[0] for option in self.menu_options])
         button_height = MENU_FONT.size(self.menu_options[0])[1] + 2 * self.padding
-        start_y = SCREEN_HEIGHT // 2 - (
+        start_y = self.screen.get_height() // 2 - (
                     (len(self.menu_options) * button_height) + ((len(self.menu_options) - 1) * self.button_space)) // 2 + self.button_y_offset
         mouse_pos = pygame.mouse.get_pos()
 
         for i, option in enumerate(self.menu_options):
             option_text = MENU_FONT.render(option, True, BLACK)
             button_rect = pygame.Rect(
-                SCREEN_WIDTH // 2 - max_option_width // 2, start_y + i * (button_height + self.button_space),
+                self.screen.get_width() // 2 - max_option_width // 2,
+                start_y + i * (button_height + self.button_space),
                 max_option_width, button_height)
 
             self._draw_button(button_rect, option_text, mouse_pos)
 
+    # Draw a button
     def _draw_button(self, button_rect, option_text, mouse_pos):
-        # Draw an individual button on the screen
         if button_rect.collidepoint(mouse_pos):
             border_color = BLACK
-            button_color = WHITE  # Set button color to white on hover
+            button_color = WHITE
         else:
             border_color = WHITE
-            button_color = self.button_color  # Use the defined button color
+            button_color = self.button_color
 
         pygame.draw.rect(self.screen, border_color, button_rect)
         pygame.draw.rect(self.screen, button_color, button_rect.inflate(-4, -4))
@@ -95,32 +86,44 @@ class Menu:
         self.screen.blit(option_text, (text_x, text_y))
 
 
+# PlayScreen Class
 class PlayScreen:
-    def __init__(self):
-        # Initialize the username entry screen
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    def __init__(self, screen):
+        self.screen = screen
         pygame.display.set_caption("Sponsor Viewer")
-        # Load paths to sponsor images
         self.sponsor_paths = self._load_sponsors()
-        # Load sponsor images
         self.sponsors = [pygame.image.load(path) for path in self.sponsor_paths]
-        self.current_sponsor_index = 0  # Index of the currently selected sponsor
+        self.current_sponsor_index = 0
         self.font = pygame.font.SysFont(None, 40)
-        self.username = ""  # Store the entered username
-        self.placeholder_text = "Enter your username"  # Placeholder text for the input field
-        self.input_rect = pygame.Rect(200, 100, 400, 50)  # Rectangle for username input
-        self.input_active = False  # Flag to track whether the input field is active
+        self.username = ""
+        self.placeholder_text = "Enter your username"
+        self.input_rect = pygame.Rect(200, 100, 400, 50)
+        self.input_active = False
         self.text_color = BLACK
-        self.select_sponsor_text = "Select a sponsor"  # Text for selecting a sponsor
-        self.error_message = ""  # Error message for username validation
+        self.select_sponsor_text = "Select a sponsor"
+        self.error_message = ""
+        self.arrow_left_rect = pygame.Rect((self.screen.get_width() - 200) // 2 - 70,
+                                           (self.screen.get_height() - 100) // 2 + 25, 50, 50)
+        self.arrow_right_rect = pygame.Rect((self.screen.get_width() - 200) // 2 + 200 + 20,
+                                            (self.screen.get_height() - 100) // 2 + 25, 50, 50)
 
+    # Run the play screen
     def run(self):
         running = True
         while running:
             self.screen.fill(WHITE)
-            self._handle_events()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    self._handle_mouse_click(event)
+                elif event.type == pygame.KEYDOWN:
+                    self._handle_key_press(event)
+                elif event.type == pygame.VIDEORESIZE:
+                    self.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 
-            self._draw_background() 
+            self._draw_background()
             self._draw_username_input()
             self._draw_select_sponsor_text()
             self._draw_sponsor_selection()
@@ -129,38 +132,27 @@ class PlayScreen:
 
             pygame.display.flip()
 
+    # Draw the background
     def _draw_background(self):
-        # Draw the background image
-        background_image = pygame.transform.scale(BACKGROUND_IMAGE, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        background_image = pygame.transform.scale(BACKGROUND_IMAGE, self.screen.get_size())
         self.screen.blit(background_image, (0, 0))
 
+    # Draw the text for selecting sponsor
     def _draw_select_sponsor_text(self):
-        # Render and display the "Select a sponsor" text
         select_sponsor_surface = self.font.render(self.select_sponsor_text, True, WHITE)
         select_sponsor_rect = select_sponsor_surface.get_rect()
-        select_sponsor_rect.midtop = (SCREEN_WIDTH // 2, 200)  # Position the text
+        select_sponsor_rect.midtop = (self.screen.get_width() // 2, self.screen.get_height() // 2.8)
         self.screen.blit(select_sponsor_surface, select_sponsor_rect)
 
+    # Load sponsor images
     def _load_sponsors(self):
-        # Load paths to sponsor images from a directory
         sponsor_dir = "imgs/sponsors"
         sponsor_files = os.listdir(sponsor_dir)
         sponsors = [os.path.join(sponsor_dir, file) for file in sponsor_files]
         return sponsors
 
-    def _handle_events(self):
-        # Handle events such as mouse clicks and key presses
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                self._handle_mouse_click(event)
-            elif event.type == pygame.KEYDOWN:
-                self._handle_key_press(event)
-
+    # Validate username
     def _validate_username(self):
-        # Validate the username input
         if len(self.username) < 3:
             self.error_message = "Username must be at least 3 characters long"
             return False
@@ -171,32 +163,42 @@ class PlayScreen:
             self.error_message = ""
             return True
 
+    # Draw error message
     def _draw_error_message(self):
-        # Draw the error message on the screen
         if self.error_message:
             error_surface = self.font.render(self.error_message, True, RED)
-            error_rect = error_surface.get_rect(center=(SCREEN_WIDTH // 2, 70))
+            error_rect = error_surface.get_rect(center=(self.screen.get_width() // 2, self.input_rect.bottom + 20))
             self.screen.blit(error_surface, error_rect)
 
+    # Handle mouse click events
     def _handle_mouse_click(self, event):
-        # Handle mouse clicks on the screen
-        if self.input_rect.collidepoint(event.pos):
-            self.input_active = True
-        else:
-            self.input_active = False
+        mouse_pos = pygame.mouse.get_pos()
+        play_button_rect = pygame.Rect(
+            (self.screen.get_width() - 200) // 2,
+            self.screen.get_height() // 1.3,
+            200,
+            50
+        )
 
-        if 300 <= event.pos[0] <= 500 and 450 <= event.pos[1] <= 500:
+        if play_button_rect.collidepoint(mouse_pos):
             if self._validate_username():
-                main(self.username, self.sponsor_paths[self.current_sponsor_index])  # Pass the path
-        elif SCREEN_WIDTH // 2 - 150 <= event.pos[0] <= SCREEN_WIDTH // 2 - 50 and SCREEN_HEIGHT // 2 - 50 <= event.pos[
-            1] <= SCREEN_HEIGHT // 2 + 50:
-            self.current_sponsor_index = (self.current_sponsor_index - 1) % len(self.sponsors)
-        elif SCREEN_WIDTH // 2 + 50 <= event.pos[0] <= SCREEN_WIDTH // 2 + 150 and SCREEN_HEIGHT // 2 - 50 <= event.pos[
-            1] <= SCREEN_HEIGHT // 2 + 50:
-            self.current_sponsor_index = (self.current_sponsor_index + 1) % len(self.sponsors)
+                main(self.username, self.sponsor_paths[self.current_sponsor_index])
+        else:
+            if self.input_rect.collidepoint(mouse_pos):
+                self.input_active = True
+            else:
+                self.input_active = False
 
+            left_arrow_rect, right_arrow_rect = self._draw_arrow((self.screen.get_width() - 100) // 2,
+                                                                 (self.screen.get_height() - 100) // 2)
+
+            if left_arrow_rect.collidepoint(mouse_pos):
+                self.current_sponsor_index = (self.current_sponsor_index - 1) % len(self.sponsors)
+            elif right_arrow_rect.collidepoint(mouse_pos):
+                self.current_sponsor_index = (self.current_sponsor_index + 1) % len(self.sponsors)
+
+    # Handle key press events
     def _handle_key_press(self, event):
-        # Handle key presses for entering the username
         if self.input_active:
             if event.key == pygame.K_RETURN:
                 self.input_active = False
@@ -206,8 +208,15 @@ class PlayScreen:
             else:
                 self.username += event.unicode
 
+    # Draw username input field
     def _draw_username_input(self):
-        # Draw the username input field on the screen
+        input_rect_width = self.screen.get_width() // 3
+        input_rect_height = 50
+        input_rect_x = (self.screen.get_width() - input_rect_width) // 2
+        input_rect_y = self.screen.get_height() // 6
+
+        self.input_rect = pygame.Rect(input_rect_x, input_rect_y, input_rect_width, input_rect_height)
+
         pygame.draw.rect(self.screen, self.text_color, self.input_rect, 2)
         if not self.username and not self.input_active:
             placeholder_surface = self.font.render(self.placeholder_text, True, GRAY)
@@ -218,52 +227,61 @@ class PlayScreen:
             text_rect = text_surface.get_rect(center=self.input_rect.center)
             self.screen.blit(text_surface, text_rect.topleft)
 
+    # Draw sponsor selection
     def _draw_sponsor_selection(self):
-        # Draw the sponsor selection area on the screen
-        sponsor_x = (SCREEN_WIDTH - 100) // 2
-        sponsor_y = (SCREEN_HEIGHT - 100) // 2
+        sponsor_x = (self.screen.get_width() - 100) // 2
+        sponsor_y = (self.screen.get_height() - 100) // 2
         sponsor_img = pygame.transform.scale(self.sponsors[self.current_sponsor_index], (100, 100))
         self.screen.blit(sponsor_img, (sponsor_x, sponsor_y))
         self._draw_arrow(sponsor_x, sponsor_y)
 
+    # Draw arrow buttons for sponsor selection
     def _draw_arrow(self, sponsor_x, sponsor_y):
-        # Draw arrows to navigate through sponsors
-        arrow_img = pygame.image.load("imgs/arrow.png")
         arrow_size = (50, 70)
 
-        left_arrow_rotated = pygame.transform.scale(arrow_img, arrow_size)
+        left_arrow_rect = pygame.Rect(sponsor_x - arrow_size[0] - 10, sponsor_y + arrow_size[0] / 2, arrow_size[0], arrow_size[1])
+        right_arrow_rect = pygame.Rect(sponsor_x + arrow_size[1] + 20, sponsor_y + arrow_size[0] / 2, arrow_size[0], arrow_size[1])
+
+        left_arrow_rotated = pygame.transform.scale(ARROW_IMAGE, arrow_size)
         left_arrow_rotated = pygame.transform.rotate(left_arrow_rotated, -90)
-        self.screen.blit(left_arrow_rotated, (sponsor_x - arrow_size[0] - 10, sponsor_y + arrow_size[0]/2))
+        self.screen.blit(left_arrow_rotated, (sponsor_x - arrow_size[0] - 10, sponsor_y + arrow_size[0] / 2))
 
-        right_arrow_rotated = pygame.transform.scale(arrow_img, arrow_size)
+        right_arrow_rotated = pygame.transform.scale(ARROW_IMAGE, arrow_size)
         right_arrow_rotated = pygame.transform.rotate(right_arrow_rotated, 90)
-        self.screen.blit(right_arrow_rotated, (sponsor_x + arrow_size[1] + 20, sponsor_y + arrow_size[0]/2))
+        self.screen.blit(right_arrow_rotated, (sponsor_x + arrow_size[1] + 20, sponsor_y + arrow_size[0] / 2))
 
+        return left_arrow_rect, right_arrow_rect
+
+    # Draw the play button
     def _draw_play_button(self):
-        # Draw the play button on the screen
-        pygame.draw.rect(self.screen, GRAY, (300, 450, 200, 50), 0)
-        pygame.draw.rect(self.screen, WHITE, (300, 450, 200, 50), 3)
+        button_width = 200
+        button_height = 50
+        button_x = (self.screen.get_width() - button_width) // 2
+        button_y = self.screen.get_height() // 1.3
+
+        pygame.draw.rect(self.screen, GRAY, (button_x, button_y, button_width, button_height), 0)
+        pygame.draw.rect(self.screen, WHITE, (button_x, button_y, button_width, button_height), 3)
         play_text = self.font.render("Play Game", True, BLACK)
-        self.screen.blit(play_text, (330, 460))
+        text_x = button_x + (button_width - play_text.get_width()) // 2
+        text_y = button_y + (button_height - play_text.get_height()) // 2
+        self.screen.blit(play_text, (text_x, text_y))
 
 
+# Main function to start the game
 def main(username, sponsor_name):
-    # Main function to start the game
-    print("Running main() with username:", username)
-    print("Sponsor:", sponsor_name)
     play_game(username, sponsor_name)
 
 
+# Main menu function
 def main_menu():
-    # Main menu function to display the menu screen
-    pygame.init()
-    menu = Menu()  # Create a Menu object
-    clock = pygame.time.Clock()  # Clock object to control frame rate
+    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    menu = Menu(screen)
+    clock = pygame.time.Clock()
     run_menu = True
 
     while run_menu:
-        clock.tick(60)  # Cap the frame rate at 60 FPS
-        menu.draw()  # Draw the menu screen
+        clock.tick(60)
+        menu.draw()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -274,19 +292,19 @@ def main_menu():
                     max_option_width = max([MENU_FONT.size(option)[0] for option in menu.menu_options])
                     button_height = MENU_FONT.size(menu.menu_options[0])[1] + 2 * menu.padding
                     button_rect = pygame.Rect(
-                        SCREEN_WIDTH // 2 - max_option_width // 2,
-                        SCREEN_HEIGHT // 2 - (
-                                    (len(menu.menu_options) * button_height) + (
-                                        (len(menu.menu_options) - 1) * menu.button_space)) // 2 + i * (
-                                            button_height + menu.button_space) + menu.button_y_offset,
+                        screen.get_width() // 2 - max_option_width // 2,
+                        screen.get_height() // 2 - (
+                                (len(menu.menu_options) * button_height) + (
+                                    (len(menu.menu_options) - 1) * menu.button_space)) // 2 + i * (
+                                        button_height + menu.button_space) + menu.button_y_offset,
                         max_option_width,
                         button_height,
                     )
                     if button_rect.collidepoint(mouse_pos):
                         if option == "Play":
-                            play_screen = PlayScreen()
+                            play_screen = PlayScreen(screen)
                             play_screen.run()
 
 
 if __name__ == "__main__":
-    main_menu()  # Run the main menu function when the script is executed
+    main_menu()
