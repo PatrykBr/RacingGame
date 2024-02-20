@@ -13,7 +13,7 @@ TRACK_BORDER_MASK = pygame.mask.from_surface(TRACK_BORDER)
 
 FINISH = pygame.image.load("imgs/finish.png")
 FINISH_MASK = pygame.mask.from_surface(FINISH)
-FINISH_POSITION = (690, 865)
+FINISH_POSITION = (790, 865)
 
 RED_CAR = scale_image(pygame.image.load("imgs/cars/red_bull.png"), 0.7)
 GREEN_CAR = scale_image(pygame.image.load("imgs/cars/mclaren.png"), 0.8)
@@ -65,15 +65,28 @@ class AbstractCar:
         self.angle = 90
         self.x, self.y = self.START_POS
         self.acceleration = 0.1
+        self.update_mask()#pdate the mask initially
 
     def rotate(self, left=False, right=False):
         if left:
             self.angle += self.rotation_vel
         elif right:
             self.angle -= self.rotation_vel
+        self.update_mask()#Update the mask after rotation
+
+    def update_mask(self):
+        rotated_car_img = pygame.transform.rotate(self.img, self.angle)
+        rotated_car_rect = rotated_car_img.get_rect()
+        rotated_car_rect.center = (self.x, self.y)
+
+        self.mask = pygame.mask.from_surface(rotated_car_img)
+
+    def draw_mask(self, win):
+        win.blit(self.mask.to_surface(), (self.x, self.y))
 
     def draw(self, win):
         blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
+        self.draw_mask(win)
 
     def move_forward(self):
         self.vel = min(self.vel + self.acceleration, self.max_vel)
@@ -92,9 +105,13 @@ class AbstractCar:
         self.x -= horizontal
 
     def collide(self, mask, x=0, y=0):
-        car_mask = pygame.mask.from_surface(self.img)
+        #car_mask = pygame.mask.from_surface(self.img)
         offset = (int(self.x - x), int(self.y - y))
-        poi = mask.overlap(car_mask, offset)
+        poi = mask.overlap(self.mask, offset)
+
+        if poi is not None:
+            pygame.draw.circle(WIN, (255, 0, 0), poi, 5)
+            pygame.display.update()
 
         return poi
 
@@ -105,7 +122,7 @@ class AbstractCar:
 
 class PlayerCar(AbstractCar):
     IMG = RED_CAR
-    START_POS = (620, 875)
+    START_POS = (610, 875)
 
     def reduce_speed(self):
         self.vel = max(self.vel - self.acceleration / 2, 0)
@@ -193,7 +210,10 @@ def draw(win, images, player_car, computer_car, game_info):
 
 
     player_car.draw(win)
+    player_car.draw_mask(win)  # Add this line to draw player car mask
     computer_car.draw(win)
+    computer_car.draw_mask(win)  # Add this line to draw computer car mask
+    
     pygame.display.update()
 
 def move_player(player_car):
