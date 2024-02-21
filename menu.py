@@ -91,8 +91,8 @@ class PlayScreen:
     def __init__(self, screen):
         self.screen = screen
         pygame.display.set_caption("Sponsor Viewer")
-        self.sponsor_paths = self._load_sponsors()
-        self.sponsors = [pygame.image.load(path) for path in self.sponsor_paths]
+        self.sponsor_info = self._load_sponsors()
+        self.sponsors = [pygame.image.load(os.path.join('imgs/sponsors', name + extension)) for name, extension in self.sponsor_info]
         self.current_sponsor_index = 0
         self.font = pygame.font.SysFont(None, 40)
         self.username = ""
@@ -144,12 +144,14 @@ class PlayScreen:
         select_sponsor_rect.midtop = (self.screen.get_width() // 2, self.screen.get_height() // 2.8)
         self.screen.blit(select_sponsor_surface, select_sponsor_rect)
 
-    # Load sponsor images
+    # Load sponsor names and extensions
     def _load_sponsors(self):
         sponsor_dir = "imgs/sponsors"
         sponsor_files = os.listdir(sponsor_dir)
-        sponsors = [os.path.join(sponsor_dir, file) for file in sponsor_files]
+        sponsors = [(os.path.splitext(file)[0], os.path.splitext(file)[1]) for file in sponsor_files]  # Create tuples of name and extension
         return sponsors
+
+
 
     # Validate username
     def _validate_username(self):
@@ -182,7 +184,8 @@ class PlayScreen:
 
         if play_button_rect.collidepoint(mouse_pos):
             if self._validate_username():
-                main(self.username, self.sponsor_paths[self.current_sponsor_index])
+                # Assuming self.sponsor_paths contains the full file paths to the sponsor images
+                main(self.username, self.sponsor_info[self.current_sponsor_index])
         else:
             if self.input_rect.collidepoint(mouse_pos):
                 self.input_active = True
@@ -268,8 +271,11 @@ class PlayScreen:
 
 
 # Main function to start the game
-def main(username, sponsor_name):
-    play_game(username, sponsor_name)
+def main(username, sponsor_info):
+    sponsor_name, extension = sponsor_info
+    sponsor_filename = sponsor_name + extension
+    play_game(username, sponsor_filename)
+
 
 
 # Main menu function
