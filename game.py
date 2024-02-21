@@ -6,16 +6,16 @@ from utils import scale_image, blit_rotate_center, blit_text_center
 pygame.init()
 
 GRASS = scale_image(pygame.image.load("imgs/grass.jpg"), 2.5)
-TRACK = scale_image(pygame.image.load("imgs/track3.png"), 1.85)
+TRACK = scale_image(pygame.image.load("imgs/track3.png"), 1.35)
 
-TRACK_BORDER = scale_image(pygame.image.load("imgs/border2.png"), 1.85)
+TRACK_BORDER = scale_image(pygame.image.load("imgs/border2.png"), 1.35)
 TRACK_BORDER_MASK = pygame.mask.from_surface(TRACK_BORDER)
 
 FINISH = pygame.image.load("imgs/finish.png")
 FINISH_MASK = pygame.mask.from_surface(FINISH)
-FINISH_POSITION = (790, 865)
+FINISH_POSITION = (790, 580)
 
-RED_CAR = scale_image(pygame.image.load("imgs/cars/red_bull.png"), 0.7)
+RED_CAR = scale_image(pygame.image.load("imgs/cars/red_bull.png"), 0.6)
 GREEN_CAR = scale_image(pygame.image.load("imgs/cars/mclaren.png"), 0.8)
 print(RED_CAR.get_height(), RED_CAR.get_width())
 
@@ -72,21 +72,22 @@ class AbstractCar:
             self.angle += self.rotation_vel
         elif right:
             self.angle -= self.rotation_vel
-        self.update_mask()#Update the mask after rotation
 
     def update_mask(self):
-        rotated_car_img = pygame.transform.rotate(self.img, self.angle)
-        rotated_car_rect = rotated_car_img.get_rect()
-        rotated_car_rect.center = (self.x, self.y)
-
+        rotated_car_img, new_rect = blit_rotate_center(WIN, self.img, (self.x, self.y), self.angle)
         self.mask = pygame.mask.from_surface(rotated_car_img)
+        self.mask_rect = new_rect
 
     def draw_mask(self, win):
-        win.blit(self.mask.to_surface(), (self.x, self.y))
+        # Use the mask_rect to position the mask correctly on the screen
+        #win.blit(self.mask.to_surface(), self.mask_rect.topleft)
+        print()
 
     def draw(self, win):
+        # Draw the mask for debugging purposes
+        #self.draw_mask(win)
+        # Draw the car image on top of the mask
         blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
-        self.draw_mask(win)
 
     def move_forward(self):
         self.vel = min(self.vel + self.acceleration, self.max_vel)
@@ -103,16 +104,19 @@ class AbstractCar:
 
         self.y -= vertical
         self.x -= horizontal
+        self.update_mask() # Update the mask after rotation
+
 
     def collide(self, mask, x=0, y=0):
-        #car_mask = pygame.mask.from_surface(self.img)
-        offset = (int(self.x - x), int(self.y - y))
+        # Calculate the offset based on the top left corner of the mask rectangle
+        offset_x = int(self.mask_rect.left - x)
+        offset_y = int(self.mask_rect.top - y)
+        offset = (offset_x, offset_y)
+        
         poi = mask.overlap(self.mask, offset)
-
         if poi is not None:
             pygame.draw.circle(WIN, (255, 0, 0), poi, 5)
             pygame.display.update()
-
         return poi
 
     def reset(self):
@@ -122,19 +126,19 @@ class AbstractCar:
 
 class PlayerCar(AbstractCar):
     IMG = RED_CAR
-    START_POS = (610, 875)
+    START_POS = (610, 620)
 
     def reduce_speed(self):
         self.vel = max(self.vel - self.acceleration / 2, 0)
         self.move()
 
     def bounce(self):
-        self.vel = -self.vel * 0.8
+        self.vel = -self.vel
         self.move()
 
 class ComputerCar(AbstractCar):
     IMG = GREEN_CAR
-    START_POS = (620, 870)
+    START_POS = (620, 620)
 
     def __init__(self, max_vel, rotation_vel, path=[]):
         super().__init__(max_vel, rotation_vel)
@@ -270,6 +274,9 @@ def play_game(username, sponsor_name):
 
     while run:
         clock.tick(FPS)
+
+        pygame.draw.circle(WIN, (0, 0, 255), (620, 580), 5)
+        pygame.display.update()
 
         draw(WIN, images, player_car, computer_car, game_info)
         while not game_info.started:
